@@ -28,6 +28,8 @@ WHITE = (255, 255, 255)
 
 G = 100 # Gravitationskonstante
 DT = 1/FPS*SPEEDFAC
+BESCH_BALL = 77
+
 
 # BIS = BALL IN SPACE, x, y, und vx, vy, also alle Ball-Informationen in einem
 # Dictionary
@@ -36,16 +38,28 @@ BIS = {"x": (WINDOWWIDTH - LINETHICKNESS)/2,
        "vx": 1,
        "vy": 0}
 
+def displayScore(score, topleft):
+    resultSurf = BASICFONT.render("Score = %s" %(score), True, WHITE)
+    resultRect = resultSurf.get_rect()
+    resultRect.topleft = topleft
+    DISPLAYSURF.blit(resultSurf, resultRect)
+
 def main():
     pygame.init()
     global DISPLAYSURF
-    global G
+    global BASICFONT, BASICFONTSIZE
+    
+    score = "A"
     
     FPSCLOCK = pygame.time.Clock()
     DISPLAYSURF = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT))
     pygame.display.set_caption("GravPing")
     
+    BASICFONTSIZE = 20
+    BASICFONT = pygame.font.Font("freesansbold.ttf", BASICFONTSIZE)
+    
     ball = pygame.Rect(round(BIS["x"]), round(BIS["y"]), LINETHICKNESS, LINETHICKNESS)
+    ball_acc = "none"
     
     lower_edge = (WINDOWHEIGHT - LINETHICKNESS) # y-Koordinate der unteren Linie
     
@@ -54,6 +68,16 @@ def main():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    ball_acc = "left"
+                if event.key == pygame.K_RIGHT:
+                    ball_acc = "right"
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    ball_acc = "none"
+                if event.key == pygame.K_RIGHT:
+                    ball_acc = "none"
         
         DISPLAYSURF.fill((0, 0, 0))
         pygame.draw.rect(DISPLAYSURF, WHITE, ((0, 0),
@@ -74,18 +98,24 @@ def main():
         if pot_y > lower_edge:
             diff = lower_edge - (BIS["y"] + LINETHICKNESS)
             BIS["y"] = lower_edge - (BIS["vy"]*DT + LINETHICKNESS - diff) 
-            # BIS["y"] = BIS["vy"]*DT - (BIS["y"] - lower_edge)
-            # BIS["y"] = lower_edge - LINETHICKNESS
             BIS["vy"] *= -1 # Bounce in y-Richtung
             
         else:
             BIS["y"] += BIS["vy"]*DT
         
         
+        if ball_acc == "left":
+            BIS["vx"] -= BESCH_BALL*DT
+        elif ball_acc == "right":
+            BIS["vx"] += BESCH_BALL*DT
+        
         BIS["x"] += BIS["vx"]*DT
 
         ball.x = round(BIS["x"])
         ball.y = round(BIS["y"])
+        
+        displayScore(ball_acc, (WINDOWWIDTH - 150, 15))
+        displayScore(str(round(BIS["vx"], 3)), (WINDOWWIDTH - 150, 35))
         
         pygame.display.update()
         FPSCLOCK.tick(FPS)
