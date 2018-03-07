@@ -4,42 +4,44 @@ Created on Sun Mar  4 21:25:42 2018
 
 @author: Heinz
 
-Beschreibung
-Leitet sich von diesem Pong-Tutorial ab: 
+Description
+This code is derived from and inspired by this blog post
 http://trevorappleton.blogspot.de/2014/04/writing-pong-using-python-and-pygame.html
 """
 
-# pygame importen, locals importen. Die locals sind Codes für einige Events,
-# wie z.B. bestimmte Tasten, Mausbewegung und so weiter.
+
+# import pygame, import pygame locals which are variables storing values for
+# keyboard events, for example
+
 import pygame, sys
 from pygame.locals import *
 
-# Faktor, um die Geschwindigkeit zu erhöhen
-SPEEDFAC = 2
-
+# Parameters for game behavior
 FPS = 100
+SPEEDFAC = 2            # Factor controling the speed (a factor on DT)
+G = 100                 # Gravitational constant
+DT = 1/FPS*SPEEDFAC     # Time increment
+BESCH_BALL = 50         # Acceleration of ball on button press
 
+# Parameters for appearance
 WINDOWWIDTH = 800
 WINDOWHEIGHT = 600
-LINETHICKNESS = 10
+LINETHICKNESS = 15
+BALLWIDTH = 20
 
+# Defining some colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
-G = 100 # Gravitationskonstante
-DT = 1/FPS*SPEEDFAC
-BESCH_BALL = 77
-
-
-# BIS = BALL IN SPACE, x, y, und vx, vy, also alle Ball-Informationen in einem
-# Dictionary
+# BIS = BALL IN SPACE, a dictionary containing all information of ball,
+# location x, y and speed vx, vy
 BIS = {"x": (WINDOWWIDTH - LINETHICKNESS)/2,
        "y": (WINDOWHEIGHT- LINETHICKNESS)/2,
        "vx": 1,
        "vy": 0}
 
-def displayScore(score, topleft):
-    resultSurf = BASICFONT.render("Score = %s" %(score), True, WHITE)
+def displayText(text, topleft):
+    resultSurf = BASICFONT.render(text, True, WHITE)
     resultRect = resultSurf.get_rect()
     resultRect.topleft = topleft
     DISPLAYSURF.blit(resultSurf, resultRect)
@@ -58,10 +60,12 @@ def main():
     BASICFONTSIZE = 20
     BASICFONT = pygame.font.Font("freesansbold.ttf", BASICFONTSIZE)
     
-    ball = pygame.Rect(round(BIS["x"]), round(BIS["y"]), LINETHICKNESS, LINETHICKNESS)
+    ball = pygame.Rect(round(BIS["x"]), round(BIS["y"]), BALLWIDTH, BALLWIDTH)
     ball_acc = "none"
     
     lower_edge = (WINDOWHEIGHT - LINETHICKNESS) # y-Koordinate der unteren Linie
+    left_edge = LINETHICKNESS
+    right_edge = WINDOWWIDTH - LINETHICKNESS
     
     while True:
         for event in pygame.event.get():
@@ -73,6 +77,8 @@ def main():
                     ball_acc = "left"
                 if event.key == pygame.K_RIGHT:
                     ball_acc = "right"
+                if event.key == pygame.K_SPACE:
+                    BIS["vx"] = 0
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
                     ball_acc = "none"
@@ -87,17 +93,11 @@ def main():
         
         BIS["vy"] += G*DT # Gravitationsbeschleunigung anwenden.
         
-        # Für die Kollisionsabfrage mit der unteren Kante die Position des
-        # unteren Ballrandes einen Zeitschritt weiter projezieren
-        pot_y = BIS["y"] + LINETHICKNESS + BIS["vy"]*DT
-        
-        # Falls die untere Kante des Balls tiefer liegt als die obere Kante der
-        # unteren Begrenzung, dann muss der Ball bouncen unter der Annahme
-        # konstanten Geschwindigkeitsbetrages, d.h. er ist nach dem Bounce so
-        # hoch wie die Differenz von y - v_y*dt über der unteren Begrenzung.
+        # Collision with lower boundary
+        pot_y = BIS["y"] + BALLWIDTH + BIS["vy"]*DT
         if pot_y > lower_edge:
-            diff = lower_edge - (BIS["y"] + LINETHICKNESS)
-            BIS["y"] = lower_edge - (BIS["vy"]*DT + LINETHICKNESS - diff) 
+            diff = lower_edge - (BIS["y"] + BALLWIDTH)
+            BIS["y"] = lower_edge - (BIS["vy"]*DT + BALLWIDTH - diff) 
             BIS["vy"] *= -1 # Bounce in y-Richtung
             
         else:
@@ -109,14 +109,36 @@ def main():
         elif ball_acc == "right":
             BIS["vx"] += BESCH_BALL*DT
         
+        # Collusion with left and right boundary
+        pot_x_left = BIS["x"] + BIS["vx"]*DT
+        if pot_x_left <= left_edge:
+            diff = BIS["x"] - left_edge
+            BIS["x"] = left_edge - diff - BIS["vx"]*DT 
+            BIS["vx"] *= -1
+        else:
+            BIS["x"] += BIS["vx"]*DT
+        
+        pot_x_right = BIS["x"] + BIS["vx"]*DT + BALLWIDTH
+        if pot_x_right >= right_edge:
+            diff = right_edge - (BIS["x"] + BALLWIDTH)
+            BIS["x"] = right_edge - (BIS["vx"]*DT - diff) - BALLWIDTH
+            BIS["vx"] *= -1
+        else:
+            BIS["x"] += BIS["vx"]*DT
+        
+        
+
         BIS["x"] += BIS["vx"]*DT
 
         ball.x = round(BIS["x"])
         ball.y = round(BIS["y"])
         
-        displayScore(ball_acc, (WINDOWWIDTH - 150, 15))
-        displayScore(str(round(BIS["vx"], 3)), (WINDOWWIDTH - 150, 35))
-        
+        displayText(str(ball_acc), (WINDOWWIDTH - 150, 15))
+        displayText(str(round(BIS["vx"], 3)), (WINDOWWIDTH - 150, 35))
+        displayText(str(round(BIS["vy"], 3)), (WINDOWWIDTH - 75, 35))
+        displayText("x: " + str(round(BIS["x"])) + ", y: " + str(round(BIS["y"])), (WINDOWWIDTH - 250, 55))
+        displayText(str(round(pot_x_left)), (WINDOWWIDTH - 250, 75))
+        displayText(str(LINETHICKNESS), (WINDOWWIDTH - 150, 75))
         pygame.display.update()
         FPSCLOCK.tick(FPS)
         
